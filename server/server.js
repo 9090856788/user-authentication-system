@@ -11,16 +11,20 @@ const app = express();
 
 //default middlewares
 app.use(express.json());
+app.use(express.urlencoded({ extends: true }));
 app.use(cookieParser());
 app.use(
   cors({
     origin: "url",
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
 
 // api endpoints
-
+app.get("/api", (req, res) => {
+  res.send("API is running");
+});
 // db connection
 dbConnect();
 
