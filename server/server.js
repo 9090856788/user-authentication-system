@@ -5,34 +5,43 @@ import dotenv from "dotenv";
 import dbConnect from "./db/dbConnect.js";
 import { errorMiddleware } from "./middlewares/error.js";
 
+// Import route files
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+
 dotenv.config();
 const PORT = process.env.PORT || 4000;
 
 const app = express();
 
-//default middlewares
+// ✅ Default middlewares
 app.use(express.json());
-app.use(express.urlencoded({ extends: true }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "frontend_url",
+    origin: "http://localhost:3000",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
 
-// api endpoints
+// ✅ API health check
 app.get("/api", (req, res) => {
-  res.send("API is running");
+  res;
 });
 
-// db connection
+// ✅ Mount API routes
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
+
+// ✅ Connect to database
 dbConnect();
 
-// error middleware
+// ✅ Global error handler
 app.use(errorMiddleware);
 
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`Server running on the PORT ${PORT} :)`);
 });

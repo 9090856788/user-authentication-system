@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
+// ✅ Define the User schema
 const userSchema = new mongoose.Schema(
   {
+    // Basic Info
     fullName: {
       type: String,
       required: [true, "Full Name is required"],
@@ -36,12 +38,11 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, "Password is required"],
-      minLength: [8, "Password must be at less than 8 characters"],
-      maxLength: [32, "Password can't have more than 32 characters"],
+      minLength: [8, "Password must be at least 8 characters"],
+      maxLength: [32, "Password can't exceed 32 characters"],
     },
     phoneNumber: {
       type: String,
-      required: [true, "Phone Number is required"],
       validate: {
         validator: function (v) {
           return /^\d{10}$/.test(v);
@@ -49,6 +50,8 @@ const userSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid phone number!`,
       },
     },
+
+    // Optional Personal Info
     gender: {
       type: String,
       enum: ["male", "female", "other"],
@@ -69,12 +72,16 @@ const userSchema = new mongoose.Schema(
       maxlength: [500, "Bio can't exceed 500 characters"],
       default: "",
     },
+
+    // Social Media Links
     socialLinks: {
       linkedin: { type: String, default: "" },
       github: { type: String, default: "" },
       twitter: { type: String, default: "" },
       website: { type: String, default: "" },
     },
+
+    // Account Settings
     role: {
       type: String,
       enum: ["admin", "user"],
@@ -104,6 +111,8 @@ const userSchema = new mongoose.Schema(
       browser: { type: String, default: "" },
       ip: { type: String, default: "" },
     },
+
+    // Security & Verification
     loginAttempts: {
       type: Number,
       default: 0,
@@ -124,15 +133,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    verificationCodeExpire: {
+      type: Date,
+      default: Date.now,
+    },
     resetPasswordToken: {
       type: String,
       default: "",
     },
     resetPasswordExpire: {
-      type: Date,
-      default: Date.now,
-    },
-    verificationCodeExpire: {
       type: Date,
       default: Date.now,
     },
@@ -142,24 +151,26 @@ const userSchema = new mongoose.Schema(
       default: "active",
     },
 
+    // User Preferences
     preferences: {
       theme: { type: String, default: "light" },
       notifications: { type: Boolean, default: true },
     },
   },
-  { timestamps: true }
+  { timestamps: true } // Automatically adds createdAt and updatedAt fields
 );
 
-// ✅ Hash password before saving
+// ✅ Hash password before saving (only if modified)
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// ✅ Compare password method
+// ✅ Compare entered password with hashed password
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// ✅ Export the User model
 export const User = mongoose.model("User", userSchema);
