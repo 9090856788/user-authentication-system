@@ -1,7 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
 import dbConnect from "./db/dbConnect.js";
 import { errorMiddleware } from "./middlewares/error.js";
 
@@ -9,7 +10,7 @@ import { errorMiddleware } from "./middlewares/error.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 
-dotenv.config();
+// ✅ Set up the server port
 const PORT = process.env.PORT || 4000;
 
 const app = express();
@@ -25,11 +26,6 @@ app.use(
     credentials: true,
   })
 );
-
-// ✅ API health check
-app.get("/api", (req, res) => {
-  res;
-});
 
 // ✅ Mount API routes
 app.use("/api/auth", authRoutes);

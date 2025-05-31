@@ -25,7 +25,7 @@ export const isAuthenticated = async (req, res, next) => {
       return next(ErrorHandlers("User not found", 404));
     }
 
-    req.user = user; // Attach user to request object
+    req.user = user;
     next();
   } catch (error) {
     return next(ErrorHandlers("Invalid or expired token", 401));

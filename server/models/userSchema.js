@@ -157,7 +157,7 @@ const userSchema = new mongoose.Schema(
       notifications: { type: Boolean, default: true },
     },
   },
-  { timestamps: true } // Automatically adds createdAt and updatedAt fields
+  { timestamps: true }
 );
 
 // ✅ Hash password before saving (only if modified)
