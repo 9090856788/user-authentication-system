@@ -30,6 +30,9 @@ app.use(
 // ✅ Mount API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
+app.get("/", (req, res) => {
+  res.send("Welcome to the User Authentication System!");
+});
 
 // ✅ Connect to database
 dbConnect();
