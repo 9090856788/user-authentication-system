@@ -1,7 +1,6 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-
-dotenv.config(); // Load environment variables from .env file
+dotenv.config();
 
 /**
  * Sends a One-Time Password (OTP) to the specified email address using Nodemailer.

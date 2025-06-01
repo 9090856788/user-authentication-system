@@ -12,9 +12,9 @@ import jwt from "jsonwebtoken";
 
 // ✅ Register User
 export const registerUser = catchAsyncError(async (req, res, next) => {
-  const { fullName, username, email, password } = req.body;
+  const { fullName, username, email, password, phoneNumber } = req.body;
 
-  if (!fullName || !username || !email || !password) {
+  if (!fullName || !username || !email || !password || !phoneNumber) {
     return next(ErrorHandlers("Please fill all the required fields", 400));
   }
 
