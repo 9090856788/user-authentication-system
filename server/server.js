@@ -3,44 +3,101 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+import swaggerUi from "swagger-ui-express";
+import { swaggerDocument } from "./config/swagger.js";
 import dbConnect from "./db/dbConnect.js";
 import { errorMiddleware } from "./middlewares/error.js";
+import { generalLimiter } from "./middlewares/rateLimiter.js";
+import { removeUnverifiedAccounts } from "./automation/removeUnverifiedAccounts.js";
 
-// Import route files
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 
-// ✅ Set up the server port
-const PORT = process.env.PORT || 4000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+const PORT = process.env.PORT || 3000;
 const app = express();
 
-// ✅ Default middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: (origin, callback) => callback(null, true),
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ✅ Mount API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/user", userRoutes);
-app.get("/", (req, res) => {
-  res.send("Welcome to the User Authentication System!");
+// Apply general rate limiting to all incoming API traffic
+app.use("/api", generalLimiter);
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    service: "User Authentication System",
+    environment: process.env.NODE_ENV || "development",
+  });
 });
 
-// ✅ Connect to database
-dbConnect();
+// Interactive Swagger OpenAPI Documentation
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// ✅ Global error handler
+// Route handlers
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
+
+// Static client bundle delivery
+const clientDistPath = path.join(__dirname, "../client/dist");
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
+
+// Global error handler
 app.use(errorMiddleware);
 
-// ✅ Start server
-app.listen(PORT, () => {
-  console.log(`Server running on the PORT ${PORT} :)`);
+// Single Page Application fallback for non-API routes
+app.use((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ success: false, message: "API endpoint not found" });
+  }
+
+  const indexPath = path.join(clientDistPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head><title>User Auth System</title></head>
+      <body style="font-family: sans-serif; padding: 2rem; text-align: center;">
+        <h2>User Authentication System API is active</h2>
+        <p><a href="/api/docs">View API Documentation (Swagger)</a></p>
+      </body>
+    </html>
+  `);
+});
+
+dbConnect();
+
+try {
+  removeUnverifiedAccounts();
+} catch (e) {
+  console.warn("Scheduler note:", e.message);
+}
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server listening on http://0.0.0.0:${PORT}`);
+  console.log(`Swagger docs available at http://0.0.0.0:${PORT}/api/docs`);
 });

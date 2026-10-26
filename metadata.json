@@ -1,0 +1,8 @@
+{
+  "name": "User Authentication System",
+  "description": "Full-stack authentication system with JWT access and refresh tokens, OTP verification via email and SMS, role management, and password reset flows.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

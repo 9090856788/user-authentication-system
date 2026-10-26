@@ -1,10 +1,8 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
-// ✅ Define the User schema
 const userSchema = new mongoose.Schema(
   {
-    // Basic Info
     fullName: {
       type: String,
       required: [true, "Full Name is required"],
@@ -17,10 +15,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       minlength: [3, "Username must be at least 3 characters"],
       maxlength: [30, "Username can't exceed 30 characters"],
-      match: [
-        /^[a-zA-Z0-9_]+$/,
-        "Username can only contain letters, numbers, and underscores",
-      ],
+      match: [/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"],
     },
     email: {
       type: String,
@@ -44,13 +39,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       validate: {
         validator: function (v) {
-          return /^\d{10}$/.test(v);
+          return !v || /^\+?[0-9]{7,15}$/.test(v.replace(/\s+/g, ""));
         },
         message: (props) => `${props.value} is not a valid phone number!`,
       },
     },
-
-    // Optional Personal Info
     gender: {
       type: String,
       enum: ["male", "female", "other"],
@@ -71,16 +64,12 @@ const userSchema = new mongoose.Schema(
       maxlength: [500, "Bio can't exceed 500 characters"],
       default: "",
     },
-
-    // Social Media Links
     socialLinks: {
       linkedin: { type: String, default: "" },
       github: { type: String, default: "" },
       twitter: { type: String, default: "" },
       website: { type: String, default: "" },
     },
-
-    // Account Settings
     role: {
       type: String,
       enum: ["admin", "user"],
@@ -110,8 +99,6 @@ const userSchema = new mongoose.Schema(
       browser: { type: String, default: "" },
       ip: { type: String, default: "" },
     },
-
-    // Security & Verification
     loginAttempts: {
       type: Number,
       default: 0,
@@ -149,8 +136,6 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "inactive", "suspended"],
       default: "active",
     },
-
-    // User Preferences
     preferences: {
       theme: { type: String, default: "light" },
       notifications: { type: Boolean, default: true },
@@ -159,17 +144,114 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Hash password before saving (only if modified)
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
-// ✅ Compare entered password with hashed password
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// ✅ Export the User model
-export const User = mongoose.model("User", userSchema);
+const MongooseUser = mongoose.model("User", userSchema);
+
+// In-memory user store fallback used when an external MongoDB connection is unavailable
+class InMemoryUserStore {
+  constructor() {
+    this.users = new Map();
+  }
+
+  _matchesQuery(user, query) {
+    if (!query) return true;
+    if (query.$or && Array.isArray(query.$or)) {
+      return query.$or.some((subQuery) => this._matchesQuery(user, subQuery));
+    }
+    return Object.entries(query).every(([k, v]) => {
+      if (k === "_id") return String(user._id) === String(v);
+      return user[k] === v;
+    });
+  }
+
+  _wrapUser(raw) {
+    if (!raw) return null;
+    return {
+      ...raw,
+      _id: raw._id,
+      comparePassword: async (pwd) => bcrypt.compare(pwd, raw.password),
+      save: async function () {
+        if (this.password && this.password !== raw.password && !this.password.startsWith("$2")) {
+          this.password = await bcrypt.hash(this.password, 10);
+        }
+        Object.assign(raw, this);
+        return this;
+      },
+    };
+  }
+
+  async findOne(query) {
+    for (const u of this.users.values()) {
+      if (this._matchesQuery(u, query)) return this._wrapUser(u);
+    }
+    return null;
+  }
+
+  async findById(id) {
+    const raw = this.users.get(String(id));
+    if (!raw) return null;
+    const wrapped = this._wrapUser(raw);
+    return {
+      ...wrapped,
+      select: () => wrapped,
+      then: (resolve) => Promise.resolve(wrapped).then(resolve),
+    };
+  }
+
+  async create(data) {
+    const id = "usr_" + Math.random().toString(36).substring(2, 10);
+    const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : "";
+    const doc = {
+      _id: id,
+      ...data,
+      password: hashedPassword,
+      accountStatus: data.accountStatus || "active",
+      role: data.role || "user",
+      accountVerified: !!data.accountVerified,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(id, doc);
+    return this._wrapUser(doc);
+  }
+
+  async findByIdAndDelete(id) {
+    const raw = this.users.get(String(id));
+    if (!raw) return null;
+    this.users.delete(String(id));
+    return this._wrapUser(raw);
+  }
+
+  async deleteMany(filter) {
+    let deletedCount = 0;
+    for (const [id, user] of this.users.entries()) {
+      if (this._matchesQuery(user, filter)) {
+        this.users.delete(id);
+        deletedCount++;
+      }
+    }
+    return { deletedCount };
+  }
+}
+
+const memoryStore = new InMemoryUserStore();
+
+export const User = new Proxy(MongooseUser, {
+  get(target, prop) {
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      return target[prop];
+    }
+    if (prop in memoryStore) {
+      return (...args) => memoryStore[prop](...args);
+    }
+    return target[prop];
+  },
+});

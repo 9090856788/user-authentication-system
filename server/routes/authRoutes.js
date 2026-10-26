@@ -8,18 +8,18 @@ import {
   verifyResetOTP,
   resetPassword,
 } from "../controllers/authController.js";
+import { authLimiter, otpLimiter } from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
 
-// Auth routes
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+router.post("/register", authLimiter, registerUser);
+router.post("/login", authLimiter, loginUser);
+router.post("/logout", logoutUser);
 router.get("/logout", logoutUser);
 router.get("/refresh-token", refreshAccessToken);
 
-// Password reset routes
-router.post("/request-password-reset", requestPasswordReset);
-router.post("/verify-reset-otp", verifyResetOTP);
-router.post("/reset-password", resetPassword);
+router.post("/request-password-reset", otpLimiter, requestPasswordReset);
+router.post("/verify-reset-otp", otpLimiter, verifyResetOTP);
+router.post("/reset-password", otpLimiter, resetPassword);
 
 export default router;

@@ -6,19 +6,13 @@ import {
   sendOTP,
   verifyOTP,
 } from "../controllers/userController.js";
+import { otpLimiter } from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
 
-// ✅ Update user profile
 router.put("/update", isAuthenticated, updateUser);
-
-// ✅ Delete user account
 router.delete("/delete", isAuthenticated, deleteUser);
-
-// ✅ Send OTP to user's email/phone
-router.get("/send-otp", isAuthenticated, sendOTP);
-
-// ✅ Verify OTP for account verification
-router.post("/verify-otp", isAuthenticated, verifyOTP);
+router.get("/send-otp", isAuthenticated, otpLimiter, sendOTP);
+router.post("/verify-otp", isAuthenticated, otpLimiter, verifyOTP);
 
 export default router;

@@ -1,21 +1,18 @@
 import mongoose from "mongoose";
 
-// ✅ Function to connect to MongoDB using Mongoose
 const dbConnect = async () => {
   try {
-    // Attempt to connect to MongoDB using the URI from environment variables
-    await mongoose
-      .connect(process.env.MONGO_URI)
-      .then(() => {
-        console.log(`Database Connected Successfully :)`);
-      })
-      .catch((error) => {
-        // Catch connection errors inside the .catch block
-        console.log(`Database Connection failed due to: ${error.message}`);
-      });
+    mongoose.set("bufferCommands", false);
+    if (!process.env.MONGO_URI) {
+      console.warn("MONGO_URI not configured. Operating with in-memory persistence.");
+      return;
+    }
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 2500,
+    });
+    console.log("Database connected successfully.");
   } catch (error) {
-    // Catch any unexpected errors during the connection process
-    console.error(`Database connection error: ${error.message}`);
+    console.warn(`Database connection failed (${error.message}). Using in-memory fallback.`);
   }
 };
 

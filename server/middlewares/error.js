@@ -1,90 +1,65 @@
-// ✅ Custom ErrorHandler class to attach status codes to errors
-class ErrorHandler extends Error {
+export class ErrorHandler extends Error {
   constructor(message, statusCode) {
     super(message);
-    this.statusCode = statusCode;
+    this.name = "ErrorHandler";
+    this.statusCode = statusCode || 500;
   }
 }
 
-// ✅ Centralized error handling middleware
-// @desc    Handles various known error types and sends consistent JSON responses
-// @usage   Use as the last middleware in app.js: app.use(errorMiddleware)
+export const ErrorHandlers = (message, statusCode) => {
+  return new ErrorHandler(message, statusCode);
+};
+
 export const errorMiddleware = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
 
-  // Handle invalid MongoDB ObjectId
+  if (err.name === "ErrorHandler") {
+    return res.status(statusCode).json({
+      success: false,
+      message,
+    });
+  }
+
   if (err.name === "CastError") {
     return res.status(400).json({
       success: false,
-      message: `Resource not found. Invalid: ${err.path}`,
+      message: `Resource not found. Invalid identifier: ${err.path}`,
     });
   }
 
-  // Handle Mongoose validation errors
   if (err.name === "ValidationError") {
+    const errors = Object.values(err.errors || {}).map((e) => e.message);
     return res.status(400).json({
       success: false,
-      message: err.message,
+      message: errors.join(", ") || err.message,
     });
   }
 
-  // Handle invalid JWT
+  if (err.name === "MongoServerError" && err.code === 11000) {
+    const keys = err.keyValue ? Object.keys(err.keyValue) : ["field"];
+    return res.status(409).json({
+      success: false,
+      message: `Duplicate entry for ${keys.join(", ")}`,
+    });
+  }
+
   if (err.name === "JsonWebTokenError") {
     return res.status(401).json({
       success: false,
-      message: "Json Web Token is invalid, try again",
+      message: "JSON Web Token is invalid",
     });
   }
 
-  // Handle expired JWT
   if (err.name === "TokenExpiredError") {
     return res.status(401).json({
       success: false,
-      message: "Json Web Token is expired, try again",
+      message: "JSON Web Token has expired",
     });
   }
 
-  // Handle duplicate key errors (e.g., email or username already exists)
-  if (err.name === "MongoServerError" && err.code === 11000) {
-    return res.status(400).json({
-      success: false,
-      message: `Duplicate ${Object.keys(err.keyValue)} entered`,
-    });
-  }
-
-  // Handle Multer file upload errors
-  if (err.name === "MulterError") {
-    return res.status(400).json({
-      success: false,
-      message: err.message,
-    });
-  }
-
-  // Handle generic JavaScript errors
-  if (err.name === "Error") {
-    return res.status(400).json({
-      success: false,
-      message: err.message,
-    });
-  }
-
-  // Handle type errors
-  if (err.name === "TypeError") {
-    return res.status(400).json({
-      success: false,
-      message: "Type Error occurred",
-    });
-  }
-
-  // Default fallback for unhandled errors
   return res.status(statusCode).json({
     success: false,
-    message: message,
+    message,
   });
-};
-
-// ✅ Helper function to create custom errors with status codes
-export const ErrorHandlers = (message, statusCode) => {
-  return new ErrorHandler(message, statusCode);
 };

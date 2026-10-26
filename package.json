@@ -1,0 +1,16 @@
+{
+  "name": "user-authentication-system",
+  "version": "1.0.0",
+  "description": "Full-stack User Authentication System",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "build": "npm --prefix client run build",
+    "dev": "node server/server.js",
+    "start": "node server/server.js"
+  }
+}
