@@ -15,12 +15,16 @@ import { removeUnverifiedAccounts } from "./automation/removeUnverifiedAccounts.
 
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
 const app = express();
+
+// Trust reverse proxy headers (Cloud Run, load balancers, reverse proxies)
+app.set("trust proxy", 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -56,6 +60,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // Route handlers
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Static client bundle delivery
 const clientDistPath = path.join(__dirname, "../client/dist");

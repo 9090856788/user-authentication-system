@@ -26,7 +26,18 @@ export const isAuthenticated = async (req, res, next) => {
 
     req.user = user;
     next();
-  } catch {
-    return next(ErrorHandlers("Invalid or expired authorization token", 401));
+  } catch (err) {
+    console.error("AuthMiddleware error:", err.message);
+    return next(ErrorHandlers(`Invalid or expired authorization token: ${err.message}`, 401));
   }
+};
+
+export const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return next(ErrorHandlers("Authentication required", 401));
+  }
+  if (req.user.role !== "admin") {
+    return next(ErrorHandlers("Forbidden: Administrator privileges required", 403));
+  }
+  next();
 };

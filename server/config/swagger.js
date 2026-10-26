@@ -241,6 +241,43 @@ export const swaggerDocument = {
         },
       },
     },
+    "/api/user/me": {
+      get: {
+        summary: "Get profile of currently authenticated user",
+        tags: ["User Profile"],
+        security: [{ BearerAuth: [] }],
+        responses: {
+          200: { description: "Returns authenticated user profile" },
+          401: { description: "Unauthorized" },
+        },
+      },
+    },
+    "/api/user/change-password": {
+      put: {
+        summary: "Change account password",
+        tags: ["User Profile"],
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["currentPassword", "newPassword"],
+                properties: {
+                  currentPassword: { type: "string" },
+                  newPassword: { type: "string", minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Password successfully changed" },
+          400: { description: "Invalid current password or weak new password" },
+        },
+      },
+    },
     "/api/user/update": {
       put: {
         summary: "Update profile of authenticated user",
@@ -299,6 +336,106 @@ export const swaggerDocument = {
           200: { description: "Account verified successfully" },
           400: { description: "Invalid or expired OTP code" },
           401: { description: "Unauthorized" },
+        },
+      },
+    },
+    "/api/admin/dashboard/stats": {
+      get: {
+        summary: "Get aggregated dashboard statistics",
+        tags: ["Admin"],
+        security: [{ BearerAuth: [] }],
+        responses: {
+          200: { description: "Returns aggregate stats and recent users" },
+          403: { description: "Forbidden: Admin privileges required" },
+        },
+      },
+    },
+    "/api/admin/users": {
+      get: {
+        summary: "Get paginated, searchable, filterable list of users",
+        tags: ["Admin"],
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", default: 10 } },
+          { name: "search", in: "query", schema: { type: "string" } },
+          { name: "role", in: "query", schema: { type: "string", enum: ["admin", "user"] } },
+          { name: "status", in: "query", schema: { type: "string", enum: ["active", "suspended", "inactive"] } },
+          { name: "accountVerified", in: "query", schema: { type: "boolean" } },
+          { name: "sortBy", in: "query", schema: { type: "string", default: "createdAt" } },
+          { name: "sortOrder", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "desc" } },
+        ],
+        responses: {
+          200: { description: "Returns paginated user list" },
+          403: { description: "Forbidden: Admin privileges required" },
+        },
+      },
+    },
+    "/api/admin/users/{id}": {
+      get: {
+        summary: "Get user details by ID",
+        tags: ["Admin"],
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          200: { description: "Returns safe user details" },
+          404: { description: "User not found" },
+        },
+      },
+      patch: {
+        summary: "Update permitted user fields by ID",
+        tags: ["Admin"],
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/UpdateUserRequest" } } },
+        },
+        responses: {
+          200: { description: "User updated successfully" },
+          404: { description: "User not found" },
+        },
+      },
+      delete: {
+        summary: "Delete user by ID",
+        tags: ["Admin"],
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          200: { description: "User deleted successfully" },
+          400: { description: "Cannot delete self or last admin" },
+        },
+      },
+    },
+    "/api/admin/users/{id}/role": {
+      patch: {
+        summary: "Change user role",
+        tags: ["Admin"],
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object", required: ["role"], properties: { role: { type: "string", enum: ["admin", "user"] } } } } },
+        },
+        responses: {
+          200: { description: "Role updated" },
+          400: { description: "Cannot demote last admin" },
+        },
+      },
+    },
+    "/api/admin/users/{id}/status": {
+      patch: {
+        summary: "Change account status (active/suspended/inactive)",
+        tags: ["Admin"],
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object", required: ["status"], properties: { status: { type: "string", enum: ["active", "suspended", "inactive"] } } } } },
+        },
+        responses: {
+          200: { description: "Status updated" },
+          400: { description: "Cannot suspend self or last admin" },
         },
       },
     },

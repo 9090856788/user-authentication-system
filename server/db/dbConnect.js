@@ -1,18 +1,18 @@
 import mongoose from "mongoose";
 
 const dbConnect = async () => {
+  const mongoUri = process.env.MONGO_URI;
+
+  if (!mongoUri) {
+    console.error("MONGO_URI is not defined in environment variables. Please configure MONGO_URI in your .env file.");
+    return;
+  }
+
   try {
-    mongoose.set("bufferCommands", false);
-    if (!process.env.MONGO_URI) {
-      console.warn("MONGO_URI not configured. Operating with in-memory persistence.");
-      return;
-    }
-    await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 2500,
-    });
-    console.log("Database connected successfully.");
+    await mongoose.connect(mongoUri);
+    console.log("MongoDB connected successfully.");
   } catch (error) {
-    console.warn(`Database connection failed (${error.message}). Using in-memory fallback.`);
+    console.error(`MongoDB connection error: ${error.message}`);
   }
 };
 

@@ -4,7 +4,8 @@
   "description": "Backend application for user authentication system",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/auth.test.js tests/admin.test.js",
+    "seed:admin": "node scripts/seedAdmin.js",
     "start": "nodemon server.js"
   },
   "keywords": [],
